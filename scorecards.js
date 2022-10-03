@@ -1,165 +1,125 @@
-const request = require("request");
-const cheerio = require("cheerio");
+const request=require('request');
+const cheerio=require('cheerio');
 const fs = require("fs");
 const path = require("path");
 const xlsx = require("xlsx");
-
-function getInfoFromScorecard(url) {
-    request(url, cb);
+function processUrl(url){
+    request(url,cb);
 }
 
 
-function cb(err, res, body) {
-    if (err) {
-        console.log(err);
-    }
-    else if (res.statusCode == 404) {
-        console.log("Page not found");
-    }
-    else {
-
-        getMatchDetails(body);
+function cb(error,response,html){
+    if(error){
+        console.log("error");
+    }else{
+        extract(html);
     }
 }
+function extract(html){
+    let $=cheerio.load(html);
+    let matchDetailArr=$(".ds-text-tight-m.ds-font-regular.ds-text-ui-typo-mid");
+    let matchDetail=$(matchDetailArr[0]).text().split(",");
+    let result=$(".ds-text-tight-m.ds-font-regular.ds-truncate.ds-text-typo-title").text();
+    let venue=matchDetail[1];
+    let date=matchDetail[2];
+    
 
-function getMatchDetails(html) {
 
-    let selecTool = cheerio.load(html);
-
-
-    let desc = selecTool(".match-header-info.match-info-MATCH");
-
-    let descArr = desc.text().split(",");
-
-    let dateOfMatch = descArr[2];
-    let venueOfMatch = descArr[1];
-    console.log(dateOfMatch);
-    console.log(venueOfMatch);
-
-    let matchResEle = selecTool(
-        ".match-info.match-info-MATCH.match-info-MATCH-half-width>.status-text"
-    );
-    let matchResult = matchResEle.text();;
-    console.log(matchResult);
-
-    let teamNameArr = selecTool(".name-detail>.name-link");
-
-    let ownTeam = selecTool(teamNameArr[0]).text();
-    let opponentTeam = selecTool(teamNameArr[1]).text();
-
-    let allBatsmenTable = selecTool(".table.batsman tbody");
-
-    for (let i = 0; i < allBatsmenTable.length; i++) {
-
-        let allRows = selecTool(allBatsmenTable[i]).find("tr");
-
-        if (i == 1) {
-            let temp = ownTeam;
-            ownTeam = opponentTeam;
-            opponentTeam = temp;
+    //innings
+    let teamsArr=$(".ds-rounded-lg.ds-mt-2");
+    for(let i=0;i<teamsArr.length;i++){
+        let team=$(teamsArr[i]).find(".ds-text-title-xs.ds-font-bold.ds-capitalize").text();
+        let opponentIndex=i==0?1:0;
+        let opponent=$(teamsArr[opponentIndex]).find(".ds-text-title-xs.ds-font-bold.ds-capitalize").text();
+        
+        console.log(`${team} ${opponent} ${date} ${venue} ${result}`);
+        let cinnings=$(teamsArr[i]);
+        let allRows=cinnings.find(".ds-w-full.ds-table.ds-table-md.ds-table-auto.ci-scorecard-table tbody tr");
+        for(let j=0;j<allRows.length;j++){
+           let allcol=$(allRows[j]).find("td");
+           let isworthy=$(allcol[0]).hasClass("ds-w-0 ds-whitespace-nowrap ds-min-w-max");
+           if(isworthy==true){
+             let playerName= $(allcol[0]).find("a");
+             let player=$(playerName[0]).find("span");
+             let name=$(player[0]).text().trim();
+             let runs=$(allcol[2]).text().trim();
+             let balls=$(allcol[3]).text().trim();
+             let fours=$(allcol[5]).text().trim();
+             let sixes=$(allcol[6]).text().trim();
+             let strikeRate=$(allcol[7]).text().trim();
+             console.log(`${name} ${runs} ${balls} ${fours} ${sixes} ${strikeRate} `);
+             processInformation(
+                date,
+                venue,
+                result,
+                team,
+                opponent,
+                name,
+                runs,
+                balls,
+                fours,
+                sixes,
+                strikeRate
+            );
+           }
         }
-        console.log(ownTeam);
-        console.log(opponentTeam);
-        for (let i = 0; i < allRows.length; i++) {
-
-
-            let row = selecTool(allRows[i]);
-            let firstColmnOfRow = row.find("td")[0];
-            if (selecTool(firstColmnOfRow).hasClass("batsman-cell")) {
-
-                let pn = selecTool(row.find("td")[0]).text().split("");
-
-                let playerName = "";
-
-                if (pn.includes("(")) {
-                    playerName = pn.join("").split("(")[0];
-
-                } else if (pn.includes("†")) {
-                    playerName = pn.join("").split("†")[0];
-                } else playerName = pn.join("");
-
-                let runs = selecTool(row.find("td")[2]).text();
-                let balls = selecTool(row.find("td")[3]).text();
-                let numberOf4 = selecTool(row.find("td")[5]).text();
-                let numberOf6 = selecTool(row.find("td")[6]).text();
-                let sr = selecTool(row.find("td")[7]).text();
-
-                console.log(
-                    `playerName -> ${playerName} runsScored ->  ${runs} ballsPlayed ->  ${balls} numbOfFours -> ${numberOf4} numbOfSixes -> ${numberOf6}  strikeRate-> ${sr}`
-                );
-
-                processInformation(
-                    dateOfMatch,
-                    venueOfMatch,
-                    matchResult,
-                    ownTeam,
-                    opponentTeam,
-                    playerName,
-                    runs,
-                    balls,
-                    numberOf4,
-                    numberOf6,
-                    sr
-                );
-
-                console.log("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
-            }
-        }
+        console.log("-----------------------------------------------------------------");
+    }
+    
+   
+}
+function processInformation(dateOfMatch, venueOfMatch, matchResult, ownTeam, opponentTeam, playerName, runs, balls, numberOf4, numberOf6, sr) {
+    let teamNamePath = path.join(__dirname, "IPL", ownTeam);
+    if (!fs.existsSync(teamNamePath)) {
+        fs.mkdirSync(teamNamePath);
     }
 
-    function processInformation(dateOfMatch, venueOfMatch, matchResult, ownTeam, opponentTeam, playerName, runs, balls, numberOf4, numberOf6, sr) {
-        let teamNamePath = path.join(__dirname, "IPL", ownTeam);
-        if (!fs.existsSync(teamNamePath)) {
-            fs.mkdirSync(teamNamePath);
-        }
+    let playerPath = path.join(teamNamePath, playerName + ".xlsx");
+    let content = excelReader(playerPath, playerName);
 
-        let playerPath = path.join(teamNamePath, playerName + ".xlsx");
-        let content = excelReader(playerPath, playerName);
+    let playerObj = {
+        dateOfMatch,
+        venueOfMatch,
+        matchResult,
+        ownTeam,
+        opponentTeam,
+        playerName,
+        runs,
+        balls,
+        numberOf4,
+        numberOf6,
+        sr
+    };
 
-        let playerObj = {
-            dateOfMatch,
-            venueOfMatch,
-            matchResult,
-            ownTeam,
-            opponentTeam,
-            playerName,
-            runs,
-            balls,
-            numberOf4,
-            numberOf6,
-            sr
-        };
+    content.push(playerObj);
 
-        content.push(playerObj);
-
-        excelWriter(playerPath, content, playerName);
-
-    }
-
+    excelWriter(playerPath, content, playerName);
 
 }
+
+
+
 //this function reads the data from excel file
 function excelReader(playerPath, sheetName) {
-    if (!fs.existsSync(playerPath)) {
+if (!fs.existsSync(playerPath)) {
 
-        return [];
-    }
+    return [];
+}
 
-    let workBook = xlsx.readFile(playerPath);
+let workBook = xlsx.readFile(playerPath);
 
-    let excelData = workBook.Sheets[sheetName];
-    let playerObj = xlsx.utils.sheet_to_json(excelData);
-    return playerObj;
+let excelData = workBook.Sheets[sheetName];
+let playerObj = xlsx.utils.sheet_to_json(excelData);
+return playerObj;
 }
 
 function excelWriter(playerPath, jsObject, sheetName) {
 
-    let newWorkBook = xlsx.utils.book_new();
-    let newWorkSheet = xlsx.utils.json_to_sheet(jsObject);
-    xlsx.utils.book_append_sheet(newWorkBook, newWorkSheet, sheetName);
-    xlsx.writeFile(newWorkBook, playerPath);
+let newWorkBook = xlsx.utils.book_new();
+let newWorkSheet = xlsx.utils.json_to_sheet(jsObject);
+xlsx.utils.book_append_sheet(newWorkBook, newWorkSheet, sheetName);
+xlsx.writeFile(newWorkBook, playerPath);
 }
-
-module.exports = {
-    gifs: getInfoFromScorecard
+module.exports={
+    getInfo:processUrl
 }

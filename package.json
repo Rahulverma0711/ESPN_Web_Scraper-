@@ -1,7 +1,24 @@
 {
   "dependencies": {
-    "cheerio": "*",
+    "cheerio": "^1.0.0-rc.12",
     "request": "^2.88.2",
     "xlsx": "^0.18.5"
-  }
+  },
+  "name": "espn_scrapper",
+  "description": "Incorporated ESPN data to make performance Sheet of all players playing in IPL in the last session.",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rahulverma0711/ESPN_Web_Scraper-.git"
+  },
+  "author": "Rahul Verma",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Rahulverma0711/ESPN_Web_Scraper-/issues"
+  },
+  "homepage": "https://github.com/Rahulverma0711/ESPN_Web_Scraper-#readme"
 }
