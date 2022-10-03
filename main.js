@@ -1,32 +1,27 @@
-let url = "https://www.espncricinfo.com/series/ipl-2020-21-1210595";
+const request=require('request');
+const cheerio=require('cheerio');
+const allmatchobj=require('./allMatch');
 const fs = require("fs");
 const path = require("path");
-const request = require("request");
-const cheerio = require("cheerio");
-const allMatchObj = require("./allMatch");
-request(url, cb);
 
-function cb(err, res, body) {
-  if (err) {
-    console.error("error", err);
-  } else {
-    handleHTML(body);
-  }
+request("https://www.espncricinfo.com/series/ipl-2020-21-1210595",cb);
+function cb(error,response,html){
+    if(error){
+        console.log("error");
+    }else{
+        handleHtml(html);
+    }
 }
-
-
 let iplPath = path.join(__dirname,"IPL");
 if (!fs.existsSync(iplPath)) {
   fs.mkdirSync(iplPath);
 }
 
-
-function handleHTML(html){
-    let selecTool = cheerio.load(html);
-    let anchorElem = selecTool('a[data-hover="View All Results"]');
-    let relativeLink = anchorElem.attr("href");
-    let fullLink = "https://www.espncricinfo.com" + relativeLink;
-   
-    allMatchObj.getAllMatch(fullLink);
-} 
-//
+function handleHtml(html){
+    let $=cheerio.load(html);
+    let linkArr=$(".ds-border-t.ds-border-line.ds-text-center.ds-py-2>a");
+    let link=$(linkArr[0]).attr("href");
+    let fullLink="https://www.espncricinfo.com"+link;
+    allmatchobj.allMatchLink(fullLink);
+  
+}
