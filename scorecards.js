@@ -5,7 +5,8 @@ const path = require("path");
 const xlsx = require("xlsx");
 
 function getInfoFromScorecard(url) {
-    request(url, cb);
+    let a=request(url, cb);
+    console.log(a);
 }
 
 
